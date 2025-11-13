@@ -27,6 +27,7 @@ tower-http = { version = "0.5", features = ["fs"] }
 tauri = { version = "2", optional = true, features = ["tray-icon", "image-png"] }
 tauri-plugin-autostart = { version = "2", optional = true }
 tauri-plugin-store = { version = "2", optional = true }
+tauri-plugin-window-state = { version = "2", optional = true }
 rand = { version = "0.8", optional = true }
 
 [build-dependencies]
@@ -34,4 +35,4 @@ tauri-build = { version = "2", optional = true, features = [] }
 
 [features]
 default = []
-desktop = ["tauri", "tauri-build", "tauri-plugin-autostart", "tauri-plugin-store", "rand"]
+desktop = ["tauri", "tauri-build", "tauri-plugin-autostart", "tauri-plugin-store", "tauri-plugin-window-state", "rand"]

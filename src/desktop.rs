@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager};
+use tauri_plugin_window_state::WindowExt;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,22 +117,16 @@ fn main() {
             MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(state.clone())
         .invoke_handler(tauri::generate_handler![get_settings, save_settings])
         .setup(move |app| {
             let app_handle = app.handle().clone();
 
-            // Create main window
-            let _window = WebviewWindowBuilder::new(
-                app,
-                "main",
-                WebviewUrl::App("index.html".into()),
-            )
-            .title("日文学习 Flash Card")
-            .inner_size(600.0, 700.0)
-            .center()
-            .visible(true)
-            .build()?;
+            // Restore window state for the main window created from tauri.conf.json
+            if let Some(win) = app.get_webview_window("main") {
+                let _ = win.restore_state(Default::default());
+            }
 
             // Start timer
             restart_timer(&app_handle, &state);

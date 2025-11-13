@@ -6,28 +6,30 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
+    "devUrl": null,
     "frontendDist": "desktop-ui"
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": [
-      "icons/icon.png"
-    ],
+    "icon": ["icons/icon.png"],
     "windows": {
       "wix": {
         "language": "en-US"
       },
-      "nsis": null
+      "nsis": {}
     }
   },
   "app": {
     "windows": [
       {
         "title": "日文学习 Flash Card",
-        "width": 600,
-        "height": 700,
+        "width": 800,
+        "height": 900,
+        "minWidth": 700,
+        "minHeight": 800,
         "resizable": true,
+        "maximized": false,
         "fullscreen": false,
         "visible": true,
         "center": true
@@ -39,4 +41,3 @@
     "withGlobalTauri": true
   }
 }
-
