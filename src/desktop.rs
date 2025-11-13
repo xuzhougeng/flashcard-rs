@@ -259,7 +259,7 @@ fn main() {
 
             // Create system tray
             let show_item = MenuItemBuilder::with_id("show", "显示窗口").build(app)?;
-            let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "完全退出").build(app)?;
             let menu = MenuBuilder::new(app)
                 .item(&show_item)
                 .item(&quit_item)
@@ -267,6 +267,7 @@ fn main() {
 
             let tray_state = state.clone();
             let tray_app_handle = app_handle.clone();
+            let tray_quit_state = state.clone();
             TrayIconBuilder::new()
                 .menu(&menu)
                 .icon(app.default_window_icon().unwrap().clone())
@@ -283,7 +284,27 @@ fn main() {
                             }
                         }
                         "quit" => {
-                            std::process::exit(0);
+                            // Ask user to confirm exit
+                            let state_clone = tray_quit_state.clone();
+                            let app_clone = app.clone();
+                            tauri::async_runtime::spawn(async move {
+                                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+
+                                let confirm = app_clone.dialog()
+                                    .message("确定要完全退出应用吗？")
+                                    .title("确认退出")
+                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancel("确定".to_string(), "取消".to_string()))
+                                    .kind(MessageDialogKind::Warning)
+                                    .blocking_show();
+
+                                if confirm {
+                                    // Stop the timer task
+                                    if let Ok(mut running) = state_clone.timer_running.lock() {
+                                        *running = false;
+                                    }
+                                    std::process::exit(0);
+                                }
+                            });
                         }
                         _ => {}
                     }
