@@ -3,7 +3,7 @@ use std::thread;
 use std::time::Duration;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONINFORMATION, MB_YESNO, IDYES};
+use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONINFORMATION, MB_YESNO, IDYES, MB_SYSTEMMODAL};
 
 fn to_wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
@@ -20,7 +20,7 @@ fn ask_show_card(romaji: &str) -> bool {
             std::ptr::null_mut(),
             body.as_ptr(),
             title.as_ptr(),
-            MB_YESNO | MB_ICONINFORMATION,
+            MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL,
         );
         res == IDYES
     }
@@ -63,30 +63,13 @@ fn main() {
     let interval = Duration::from_secs(interval_minutes * 60);
     let mut rng = thread_rng();
 
-    // Ctrl+C handler
-    use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-    let running = Arc::new(AtomicBool::new(true));
-    {
-        let running = running.clone();
-        ctrlc::set_handler(move || {
-            running.store(false, Ordering::SeqCst);
-        }).expect("Error setting Ctrl+C handler");
-    }
-
     // Show immediately on start
-    while running.load(Ordering::SeqCst) {
+    loop {
         let pick = ROMAJI.choose(&mut rng).unwrap();
         if ask_show_card(pick) {
             open_cli_card(pick);
         }
-        // Sleep in 1-second steps to be responsive to Ctrl+C
-        let mut slept = Duration::from_secs(0);
-        while slept < interval {
-            if !running.load(Ordering::SeqCst) { break; }
-            let step = Duration::from_secs(1);
-            thread::sleep(step);
-            slept += step;
-        }
+        // Sleep for interval
+        thread::sleep(interval);
     }
-    eprintln!("Exiting jp-notifier (Ctrl+C)");
 }

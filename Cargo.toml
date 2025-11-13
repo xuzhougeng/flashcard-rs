@@ -15,4 +15,3 @@ tower = "0.4"
 tower-http = { version = "0.5", features = ["fs"] }
 rand = "0.8"
 windows-sys = { version = "0.59", features = ["Win32_UI_WindowsAndMessaging"] }
-ctrlc = "3.4"
