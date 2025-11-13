@@ -7,7 +7,6 @@ use tauri::{AppHandle, Manager};
 use tauri_plugin_window_state::WindowExt;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
-use tokio::task::AbortHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
@@ -29,7 +28,8 @@ impl Default for Settings {
 #[derive(Clone)]
 struct AppState {
     settings: Arc<Mutex<Settings>>,
-    timer_handle: Arc<Mutex<Option<AbortHandle>>>,
+    timer_running: Arc<Mutex<bool>>,
+    timer_generation: Arc<Mutex<u64>>,
 }
 
 #[tauri::command]
@@ -83,16 +83,51 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
     let app_handle = app.clone();
     let state_clone = state.clone();
 
-    // Cancel the old timer task if it exists
-    if let Ok(mut timer_handle) = state.timer_handle.lock() {
-        if let Some(handle) = timer_handle.take() {
-            handle.abort();
-        }
+    // Increment generation counter to stop old timer tasks
+    if let Ok(mut gen) = state.timer_generation.lock() {
+        *gen = gen.wrapping_add(1);
     }
 
-    // Spawn new timer task and store its abort handle
-    let task_handle = tauri::async_runtime::spawn(async move {
+    // Set timer to running
+    if let Ok(mut running) = state.timer_running.lock() {
+        *running = true;
+    }
+
+    // Spawn new timer task with generation tracking
+    tauri::async_runtime::spawn(async move {
+        // Capture current generation
+        let my_generation = {
+            let gen = state_clone.timer_generation.lock().ok();
+            gen.map(|g| *g).unwrap_or(0)
+        };
+
         loop {
+            // Check if this task should still be running
+            let should_continue = {
+                match state_clone.timer_running.lock() {
+                    Ok(running) => *running,
+                    Err(e) => {
+                        eprintln!("Failed to lock timer_running mutex: {}", e);
+                        break;
+                    }
+                }
+            };
+
+            // Check if this is still the current generation
+            let is_current_generation = {
+                match state_clone.timer_generation.lock() {
+                    Ok(gen) => *gen == my_generation,
+                    Err(e) => {
+                        eprintln!("Failed to lock timer_generation mutex: {}", e);
+                        break;
+                    }
+                }
+            };
+
+            if !should_continue || !is_current_generation {
+                break;
+            }
+
             // Get current interval with proper error handling
             let interval = {
                 match state_clone.settings.lock() {
@@ -107,6 +142,18 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
             // Wait for interval
             tokio::time::sleep(Duration::from_secs(interval * 60)).await;
 
+            // Verify again before showing window
+            let is_still_current = {
+                state_clone.timer_generation.lock()
+                    .ok()
+                    .map(|g| *g == my_generation)
+                    .unwrap_or(false)
+            };
+
+            if !is_still_current {
+                break;
+            }
+
             // Show window
             if let Some(window) = app_handle.get_webview_window("main") {
                 let _ = window.show();
@@ -114,11 +161,6 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
             }
         }
     });
-
-    // Store the new task's abort handle
-    if let Ok(mut timer_handle) = state.timer_handle.lock() {
-        *timer_handle = Some(task_handle.abort_handle());
-    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -152,7 +194,8 @@ fn main() {
 
             let state = AppState {
                 settings: Arc::new(Mutex::new(settings)),
-                timer_handle: Arc::new(Mutex::new(None)),
+                timer_running: Arc::new(Mutex::new(true)),
+                timer_generation: Arc::new(Mutex::new(0)),
             };
 
             app.manage(state.clone());
@@ -160,23 +203,21 @@ fn main() {
             // Restore window state for the main window created from tauri.conf.json
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.restore_state(Default::default());
+
+                // Setup cleanup handler for window close
+                let cleanup_state = state.clone();
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        // Stop the timer task on window close
+                        if let Ok(mut running) = cleanup_state.timer_running.lock() {
+                            *running = false;
+                        }
+                    }
+                });
             }
 
             // Start timer
             restart_timer(&app_handle, &state);
-
-            // Setup cleanup handler for app exit
-            let cleanup_state = state.clone();
-            app.on_window_event(move |window, event| {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    // Abort the timer task on window close
-                    if let Ok(mut timer_handle) = cleanup_state.timer_handle.lock() {
-                        if let Some(handle) = timer_handle.take() {
-                            handle.abort();
-                        }
-                    }
-                }
-            });
 
             Ok(())
         })
