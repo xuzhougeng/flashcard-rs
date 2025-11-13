@@ -56,7 +56,7 @@ jp 我喜欢编程
 
 ### 使用 cargo install（推荐）
 
-使用 `cargo install --path .` 安装到本地 Cargo bin 目录（会同时安装 `jp` 与 `jp-notifier` 两个可执行文件）：
+使用 `cargo install --path .` 安装到本地 Cargo bin 目录：
 
 ```bash
 # 在项目根目录执行
@@ -68,7 +68,6 @@ cargo install --locked --path .
 
 # 确保该目录已在 PATH 中，然后直接运行
 jp chi
-jp-notifier --interval-minutes 20
 ```
 
 ### 从源码编译
