@@ -187,8 +187,7 @@ fn main() {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false),
                 card_type: store.get("card_type")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
+                    .and_then(|v| v.as_str().map(|s| s.to_string()))
                     .unwrap_or_else(|| "mixed".to_string()),
             };
 
