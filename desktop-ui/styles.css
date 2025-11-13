@@ -96,6 +96,103 @@ header h1 {
     border-color: #adb5bd;
 }
 
+/* Feedback Buttons */
+.feedback-buttons {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 2px solid #e9ecef;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.btn-correct {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    flex: 1;
+    max-width: 250px;
+}
+
+.btn-correct:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-correct:active {
+    transform: translateY(0);
+}
+
+.btn-incorrect {
+    padding: 15px 40px;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+    flex: 1;
+    max-width: 250px;
+}
+
+.btn-incorrect:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.btn-incorrect:active {
+    transform: translateY(0);
+}
+
+/* Shortcut key display in buttons */
+.shortcut {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+/* Statistics Display */
+.stats-display {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 10px;
+    margin-top: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.stat-correct {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.stat-incorrect {
+    color: #dc3545;
+    font-weight: bold;
+}
+
 /* Flip card container for 3D effect */
 .card-flip-container {
     width: 100%;
