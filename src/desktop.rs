@@ -6,6 +6,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_window_state::WindowExt;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tokio::task::AbortHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
@@ -27,7 +28,7 @@ impl Default for Settings {
 #[derive(Clone)]
 struct AppState {
     settings: Arc<Mutex<Settings>>,
-    timer_running: Arc<Mutex<bool>>,
+    timer_handle: Arc<Mutex<Option<AbortHandle>>>,
 }
 
 #[tauri::command]
@@ -70,28 +71,26 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
     let app_handle = app.clone();
     let state_clone = state.clone();
 
-    // Set timer to running
-    if let Ok(mut running) = state.timer_running.lock() {
-        *running = true;
+    // Cancel the old timer task if it exists
+    if let Ok(mut timer_handle) = state.timer_handle.lock() {
+        if let Some(handle) = timer_handle.take() {
+            handle.abort();
+        }
     }
 
-    tauri::async_runtime::spawn(async move {
+    // Spawn new timer task and store its abort handle
+    let task_handle = tauri::async_runtime::spawn(async move {
         loop {
-            // Get current interval
+            // Get current interval with proper error handling
             let interval = {
-                let settings = state_clone.settings.lock().unwrap();
-                settings.interval
+                match state_clone.settings.lock() {
+                    Ok(settings) => settings.interval,
+                    Err(e) => {
+                        eprintln!("Failed to lock settings mutex: {}", e);
+                        break;
+                    }
+                }
             };
-
-            // Check if timer should still be running
-            let should_run = {
-                let running = state_clone.timer_running.lock().unwrap();
-                *running
-            };
-
-            if !should_run {
-                break;
-            }
 
             // Wait for interval
             tokio::time::sleep(Duration::from_secs(interval * 60)).await;
@@ -103,13 +102,18 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
             }
         }
     });
+
+    // Store the new task's abort handle
+    if let Ok(mut timer_handle) = state.timer_handle.lock() {
+        *timer_handle = Some(task_handle.abort_handle());
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 fn main() {
     let state = AppState {
         settings: Arc::new(Mutex::new(Settings::default())),
-        timer_running: Arc::new(Mutex::new(true)),
+        timer_handle: Arc::new(Mutex::new(None)),
     };
 
     tauri::Builder::default()
