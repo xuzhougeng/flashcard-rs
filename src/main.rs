@@ -2156,11 +2156,25 @@ async fn start_web_server(host: String, port: u16) -> Result<(), Box<dyn std::er
         .nest_service("/", ServeDir::new(&web_dir));
     
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
-    
+
+    // Security warning for non-localhost binding
+    if host != "127.0.0.1" && host != "localhost" && !host.starts_with("127.") {
+        println!("\n⚠️  SECURITY WARNING ⚠️");
+        println!("═══════════════════════════════════════════════════════════");
+        println!("You are binding to '{}', which may expose this server", host);
+        println!("to your entire network or the internet!");
+        println!("");
+        println!("This server has NO authentication or security features.");
+        println!("Anyone who can reach this address can access your files.");
+        println!("");
+        println!("💡 For local testing, use: --host 127.0.0.1 (default)");
+        println!("═══════════════════════════════════════════════════════════\n");
+    }
+
     println!("🚀 Web server started!");
     println!("🌐 Open your browser and visit: http://{}:{}", host, port);
     println!("📝 Press Ctrl+C to stop the server\n");
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     

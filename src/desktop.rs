@@ -165,6 +165,19 @@ fn main() {
             // Start timer
             restart_timer(&app_handle, &state);
 
+            // Setup cleanup handler for app exit
+            let cleanup_state = state.clone();
+            app.on_window_event(move |window, event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    // Abort the timer task on window close
+                    if let Ok(mut timer_handle) = cleanup_state.timer_handle.lock() {
+                        if let Some(handle) = timer_handle.take() {
+                            handle.abort();
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![get_settings, save_settings])
