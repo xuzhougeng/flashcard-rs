@@ -148,8 +148,7 @@ const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const intervalSelect = document.getElementById('intervalSelect');
 const autostartCheckbox = document.getElementById('autostartCheckbox');
 const cardTypeSelect = document.getElementById('cardTypeSelect');
-const correctBtn = document.getElementById('correctBtn');
-const incorrectBtn = document.getElementById('incorrectBtn');
+const closeBehaviorSelect = document.getElementById('closeBehaviorSelect');
 
 // Card history for navigation
 let cardHistory = [];
@@ -214,6 +213,7 @@ async function loadSettings() {
         intervalSelect.value = settings.interval;
         autostartCheckbox.checked = settings.autostart;
         cardTypeSelect.value = settings.card_type;
+        closeBehaviorSelect.value = settings.close_behavior || '';
     } catch (error) {
         console.error('Failed to load settings:', error);
     }
@@ -222,10 +222,12 @@ async function loadSettings() {
 // Save settings
 async function saveSettings() {
     try {
+        const closeBehaviorValue = closeBehaviorSelect.value === '' ? null : closeBehaviorSelect.value;
         const settings = {
             interval: parseInt(intervalSelect.value),
             autostart: autostartCheckbox.checked,
-            card_type: cardTypeSelect.value
+            card_type: cardTypeSelect.value,
+            close_behavior: closeBehaviorValue
         };
         await invoke('save_settings', { settings });
         alert('设置已保存！');
