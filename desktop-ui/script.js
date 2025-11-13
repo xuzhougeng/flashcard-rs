@@ -149,6 +149,10 @@ const intervalSelect = document.getElementById('intervalSelect');
 const autostartCheckbox = document.getElementById('autostartCheckbox');
 const cardTypeSelect = document.getElementById('cardTypeSelect');
 
+// Card history for navigation
+let cardHistory = [];
+let currentCardIndex = -1;
+
 // Load settings on startup
 async function loadSettings() {
     try {
@@ -174,13 +178,15 @@ async function saveSettings() {
         settingsModal.classList.remove('show');
     } catch (error) {
         console.error('Failed to save settings:', error);
-        alert('保存设置失败！');
+        const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+        alert(`保存设置失败！\n错误: ${errorMessage}`);
     }
 }
 
-// Get random card
+// Get random card with safe fallback
 function getRandomCard() {
-    const cardType = cardTypeSelect.value;
+    // Get card type, fallback to mixed if settings not loaded yet
+    const cardType = cardTypeSelect ? cardTypeSelect.value : 'mixed';
 
     if (cardType === 'romaji') {
         return getRandomRomajiCard();
@@ -205,11 +211,50 @@ function getRandomChineseCard() {
 }
 
 // Display flashcard
-function displayCard(card) {
+function displayCard(card, addToHistory = true) {
     if (card.type === 'romaji') {
         displayRomajiCard(card.data);
     } else {
         displayChineseCard(card.data);
+    }
+
+    // Add to history if it's a new card
+    if (addToHistory) {
+        // Remove any forward history
+        cardHistory = cardHistory.slice(0, currentCardIndex + 1);
+        // Add new card
+        cardHistory.push(card);
+        currentCardIndex = cardHistory.length - 1;
+
+        // Limit history to 50 cards
+        if (cardHistory.length > 50) {
+            cardHistory.shift();
+            currentCardIndex--;
+        }
+    }
+}
+
+// Show next card (new random card)
+function showNextCard() {
+    const card = getRandomCard();
+    displayCard(card, true);
+}
+
+// Show previous card from history
+function showPreviousCard() {
+    if (currentCardIndex > 0) {
+        currentCardIndex--;
+        const card = cardHistory[currentCardIndex];
+        displayCard(card, false);
+    }
+}
+
+// Show next card from history (when navigating back)
+function showForwardCard() {
+    if (currentCardIndex < cardHistory.length - 1) {
+        currentCardIndex++;
+        const card = cardHistory[currentCardIndex];
+        displayCard(card, false);
     }
 }
 
@@ -227,7 +272,7 @@ function displayRomajiCard(data) {
                         <div class="question-label">罗马字 Romaji</div>
                         <div class="question-text">${data.romaji.toUpperCase()}</div>
                     </div>
-                    <div class="flip-hint">💡 点击或按空格键查看答案</div>
+                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | ←→:切换历史</div>
                 </div>
 
                 <!-- Back side: Answer (Hiragana, Katakana, Examples) -->
@@ -279,7 +324,7 @@ function displayChineseCard(data) {
                         <div class="question-label">中文词汇 Chinese</div>
                         <div class="question-text">${data.chinese}</div>
                     </div>
-                    <div class="flip-hint">💡 点击或按空格键查看答案</div>
+                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | ←→:切换历史</div>
                 </div>
 
                 <!-- Back side: Answer (Japanese, Reading) -->
@@ -310,15 +355,51 @@ function flipCard() {
 
 // Event Listeners
 refreshBtn.addEventListener('click', () => {
-    const card = getRandomCard();
-    displayCard(card);
+    showNextCard();
 });
 
-// Keyboard event for spacebar flip
+// Enhanced keyboard event handler
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !settingsModal.classList.contains('show')) {
-        e.preventDefault(); // Prevent page scroll
-        flipCard();
+    // Skip if settings modal is showing or user is typing in input fields
+    const isInputElement = e.target.tagName === 'INPUT' ||
+                          e.target.tagName === 'TEXTAREA' ||
+                          e.target.tagName === 'SELECT';
+
+    if (settingsModal.classList.contains('show') || isInputElement) {
+        return;
+    }
+
+    // Handle different key presses
+    switch(e.code) {
+        case 'Space':
+            // Space: Flip card
+            e.preventDefault(); // Prevent page scroll
+            flipCard();
+            break;
+
+        case 'Enter':
+            // Enter: Show next new card
+            e.preventDefault();
+            showNextCard();
+            break;
+
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            // Left/Up Arrow: Show previous card from history
+            e.preventDefault();
+            showPreviousCard();
+            break;
+
+        case 'ArrowRight':
+        case 'ArrowDown':
+            // Right/Down Arrow: Show next card from history (or new if at end)
+            e.preventDefault();
+            if (currentCardIndex < cardHistory.length - 1) {
+                showForwardCard();
+            } else {
+                showNextCard();
+            }
+            break;
     }
 });
 
@@ -342,10 +423,13 @@ settingsModal.addEventListener('click', (e) => {
 // Initialize
 async function init() {
     try {
+        // Wait for settings to load before displaying first card
         await loadSettings();
     } catch (error) {
         console.error('Failed to load settings, using defaults:', error);
     }
+
+    // Now that settings are loaded, display the card
     const card = getRandomCard();
     displayCard(card);
 }

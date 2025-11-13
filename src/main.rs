@@ -1675,6 +1675,11 @@ async fn translate_with_llm(chinese_text: &str) -> Result<String, Box<dyn std::e
     let api_key = env::var("OPENAI_API_KEY")
         .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
 
+    // Validate API key is not empty
+    if api_key.trim().is_empty() {
+        return Err("OPENAI_API_KEY is set but empty".into());
+    }
+
     let api_base = env::var("OPENAI_API_BASE")
         .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
 
@@ -2151,11 +2156,25 @@ async fn start_web_server(host: String, port: u16) -> Result<(), Box<dyn std::er
         .nest_service("/", ServeDir::new(&web_dir));
     
     let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
-    
+
+    // Security warning for non-localhost binding
+    if host != "127.0.0.1" && host != "localhost" && !host.starts_with("127.") {
+        println!("\n⚠️  SECURITY WARNING ⚠️");
+        println!("═══════════════════════════════════════════════════════════");
+        println!("You are binding to '{}', which may expose this server", host);
+        println!("to your entire network or the internet!");
+        println!("");
+        println!("This server has NO authentication or security features.");
+        println!("Anyone who can reach this address can access your files.");
+        println!("");
+        println!("💡 For local testing, use: --host 127.0.0.1 (default)");
+        println!("═══════════════════════════════════════════════════════════\n");
+    }
+
     println!("🚀 Web server started!");
     println!("🌐 Open your browser and visit: http://{}:{}", host, port);
     println!("📝 Press Ctrl+C to stop the server\n");
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     
