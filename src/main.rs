@@ -1675,6 +1675,11 @@ async fn translate_with_llm(chinese_text: &str) -> Result<String, Box<dyn std::e
     let api_key = env::var("OPENAI_API_KEY")
         .map_err(|_| "OPENAI_API_KEY environment variable not set")?;
 
+    // Validate API key is not empty
+    if api_key.trim().is_empty() {
+        return Err("OPENAI_API_KEY is set but empty".into());
+    }
+
     let api_base = env::var("OPENAI_API_BASE")
         .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
 

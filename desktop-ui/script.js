@@ -178,9 +178,10 @@ async function saveSettings() {
     }
 }
 
-// Get random card
+// Get random card with safe fallback
 function getRandomCard() {
-    const cardType = cardTypeSelect.value;
+    // Get card type, fallback to mixed if settings not loaded yet
+    const cardType = cardTypeSelect ? cardTypeSelect.value : 'mixed';
 
     if (cardType === 'romaji') {
         return getRandomRomajiCard();
@@ -316,7 +317,15 @@ refreshBtn.addEventListener('click', () => {
 
 // Keyboard event for spacebar flip
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !settingsModal.classList.contains('show')) {
+    // Only flip card if:
+    // 1. Spacebar is pressed
+    // 2. Settings modal is not showing
+    // 3. User is not typing in an input/textarea/select element
+    const isInputElement = e.target.tagName === 'INPUT' ||
+                          e.target.tagName === 'TEXTAREA' ||
+                          e.target.tagName === 'SELECT';
+
+    if (e.code === 'Space' && !settingsModal.classList.contains('show') && !isInputElement) {
         e.preventDefault(); // Prevent page scroll
         flipCard();
     }
@@ -342,10 +351,13 @@ settingsModal.addEventListener('click', (e) => {
 // Initialize
 async function init() {
     try {
+        // Wait for settings to load before displaying first card
         await loadSettings();
     } catch (error) {
         console.error('Failed to load settings, using defaults:', error);
     }
+
+    // Now that settings are loaded, display the card
     const card = getRandomCard();
     displayCard(card);
 }

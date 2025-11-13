@@ -6,6 +6,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_window_state::WindowExt;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_store::StoreExt;
 use tokio::task::AbortHandle;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,11 +44,22 @@ async fn save_settings(
     state: tauri::State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    // Update settings
+    // Update settings in memory
     {
         let mut app_settings = state.settings.lock().map_err(|e| e.to_string())?;
         *app_settings = settings.clone();
     }
+
+    // Persist settings to disk
+    let store = app.store("settings.json")
+        .map_err(|e| format!("Failed to get store: {}", e))?;
+
+    store.set("interval", serde_json::json!(settings.interval));
+    store.set("autostart", serde_json::json!(settings.autostart));
+    store.set("card_type", serde_json::json!(settings.card_type.clone()));
+
+    store.save()
+        .map_err(|e| format!("Failed to save settings: {}", e))?;
 
     // Handle autostart
     let autostart_manager = app.autolaunch();
@@ -111,21 +123,39 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 fn main() {
-    let state = AppState {
-        settings: Arc::new(Mutex::new(Settings::default())),
-        timer_handle: Arc::new(Mutex::new(None)),
-    };
-
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .manage(state.clone())
-        .invoke_handler(tauri::generate_handler![get_settings, save_settings])
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(move |app| {
             let app_handle = app.handle().clone();
+
+            // Load settings from persistent storage
+            let store = app.store("settings.json")
+                .expect("Failed to initialize store");
+
+            let settings = Settings {
+                interval: store.get("interval")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(10),
+                autostart: store.get("autostart")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false),
+                card_type: store.get("card_type")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "mixed".to_string()),
+            };
+
+            let state = AppState {
+                settings: Arc::new(Mutex::new(settings)),
+                timer_handle: Arc::new(Mutex::new(None)),
+            };
+
+            app.manage(state.clone());
 
             // Restore window state for the main window created from tauri.conf.json
             if let Some(win) = app.get_webview_window("main") {
@@ -137,6 +167,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![get_settings, save_settings])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
