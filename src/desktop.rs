@@ -63,16 +63,16 @@ fn save_settings(
     store.save()
         .map_err(|e| format!("Failed to save store to disk: {}", e))?;
 
-    // Handle autostart
+    // Handle autostart (non-fatal - log errors but don't fail settings save)
     let autostart_manager = app.autolaunch();
     if settings.autostart {
-        autostart_manager
-            .enable()
-            .map_err(|e| format!("Failed to enable autostart: {}", e))?;
+        if let Err(e) = autostart_manager.enable() {
+            eprintln!("Warning: Failed to enable autostart: {}", e);
+        }
     } else {
-        autostart_manager
-            .disable()
-            .map_err(|e| format!("Failed to disable autostart: {}", e))?;
+        if let Err(e) = autostart_manager.disable() {
+            eprintln!("Warning: Failed to disable autostart: {}", e);
+        }
     }
 
     // Restart timer with new interval
