@@ -9,6 +9,7 @@ use tauri::tray::{TrayIconBuilder, TrayIconEvent};
 use tauri_plugin_window_state::WindowExt;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use tauri_plugin_store::StoreExt;
+use tauri_plugin_notification::NotificationExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
