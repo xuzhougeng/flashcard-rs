@@ -215,32 +215,50 @@ function displayCard(card) {
 
 function displayRomajiCard(data) {
     cardContainer.innerHTML = `
-        <div class="flashcard">
-            <div class="flashcard-header">
-                <h2>🎴 日文假名卡片</h2>
-                <p>Japanese Kana Flashcard</p>
-            </div>
-            <div class="flashcard-body">
-                <div class="kana-section">
-                    <div class="romaji-display">
-                        Romaji: ${data.romaji.toUpperCase()}
+        <div class="card-flip-container" onclick="flipCard()">
+            <div class="flashcard">
+                <!-- Front side: Question (Romaji) -->
+                <div class="card-front">
+                    <div class="flashcard-header">
+                        <h2>🎴 日文假名卡片</h2>
+                        <p>Japanese Kana Flashcard</p>
                     </div>
-                    <div class="kana-display">
-                        <div class="kana-char">
-                            <div class="kana-label">平假名 (Hiragana)</div>
-                            <div class="kana-text">${data.hiragana}</div>
-                        </div>
-                        <div class="kana-char">
-                            <div class="kana-label">片假名 (Katakana)</div>
-                            <div class="kana-text">${data.katakana}</div>
-                        </div>
+                    <div class="question-display">
+                        <div class="question-label">罗马字 Romaji</div>
+                        <div class="question-text">${data.romaji.toUpperCase()}</div>
                     </div>
+                    <div class="flip-hint">💡 点击或按空格键查看答案</div>
                 </div>
-                <div class="examples">
-                    <h3>📝 例词 (Example Words)</h3>
-                    ${data.examples.map((ex, i) => `
-                        <div class="example-item">${i + 1}. ${ex}</div>
-                    `).join('')}
+
+                <!-- Back side: Answer (Hiragana, Katakana, Examples) -->
+                <div class="card-back">
+                    <div class="flashcard-header">
+                        <h2>🎴 答案</h2>
+                        <p>Answer</p>
+                    </div>
+                    <div class="flashcard-body">
+                        <div class="kana-section">
+                            <div class="romaji-display">
+                                Romaji: ${data.romaji.toUpperCase()}
+                            </div>
+                            <div class="kana-display">
+                                <div class="kana-char">
+                                    <div class="kana-label">平假名 (Hiragana)</div>
+                                    <div class="kana-text">${data.hiragana}</div>
+                                </div>
+                                <div class="kana-char">
+                                    <div class="kana-label">片假名 (Katakana)</div>
+                                    <div class="kana-text">${data.katakana}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="examples">
+                            <h3>📝 例词 (Example Words)</h3>
+                            ${data.examples.map((ex, i) => `
+                                <div class="example-item">${i + 1}. ${ex}</div>
+                            `).join('')}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -249,25 +267,59 @@ function displayRomajiCard(data) {
 
 function displayChineseCard(data) {
     cardContainer.innerHTML = `
-        <div class="translation-card">
-            <div class="flashcard-header">
-                <h2>📖 中日翻译卡片</h2>
-                <p>Chinese-Japanese Translation</p>
-            </div>
-            <div class="translation-body">
-                <div class="chinese-text">${data.chinese}</div>
-                <div class="arrow">↓</div>
-                <div class="japanese-text">${data.japanese}</div>
-                <div class="reading-text">${data.reading}</div>
+        <div class="card-flip-container" onclick="flipCard()">
+            <div class="translation-card">
+                <!-- Front side: Question (Chinese) -->
+                <div class="card-front">
+                    <div class="flashcard-header">
+                        <h2>📖 中日翻译卡片</h2>
+                        <p>Chinese-Japanese Translation</p>
+                    </div>
+                    <div class="question-display">
+                        <div class="question-label">中文词汇 Chinese</div>
+                        <div class="question-text">${data.chinese}</div>
+                    </div>
+                    <div class="flip-hint">💡 点击或按空格键查看答案</div>
+                </div>
+
+                <!-- Back side: Answer (Japanese, Reading) -->
+                <div class="card-back">
+                    <div class="flashcard-header">
+                        <h2>📖 答案</h2>
+                        <p>Answer</p>
+                    </div>
+                    <div class="translation-body">
+                        <div class="chinese-text">${data.chinese}</div>
+                        <div class="arrow">↓</div>
+                        <div class="japanese-text">${data.japanese}</div>
+                        <div class="reading-text">${data.reading}</div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
+}
+
+// Flip card function
+function flipCard() {
+    const flashcard = document.querySelector('.flashcard, .translation-card');
+    if (flashcard) {
+        flashcard.classList.toggle('flipped');
+    }
 }
 
 // Event Listeners
 refreshBtn.addEventListener('click', () => {
     const card = getRandomCard();
     displayCard(card);
+});
+
+// Keyboard event for spacebar flip
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !settingsModal.classList.contains('show')) {
+        e.preventDefault(); // Prevent page scroll
+        flipCard();
+    }
 });
 
 settingsBtn.addEventListener('click', () => {
