@@ -73,7 +73,14 @@ fn main() {
         }).expect("Error setting Ctrl+C handler");
     }
 
-    // Show immediately on start
+    // Show a full card immediately on startup so user knows it's working
+    {
+        let first = ROMAJI.choose(&mut rng).unwrap();
+        eprintln!("jp-notifier: showing startup card for '{}'. Press Ctrl+C to exit.", first);
+        open_cli_card(first);
+    }
+
+    // Then enter the periodic reminder loop
     while running.load(Ordering::SeqCst) {
         let pick = ROMAJI.choose(&mut rng).unwrap();
         if ask_show_card(pick) {
