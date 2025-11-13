@@ -69,6 +69,8 @@ cargo install --locked --path .
 # 确保该目录已在 PATH 中，然后直接运行
 jp chi
 jp-notifier --interval-minutes 20
+
+# Ctrl+C 退出（现在支持优雅停止）
 ```
 
 ### 从源码编译
