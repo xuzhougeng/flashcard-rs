@@ -4,7 +4,17 @@
 
 ## 功能特性
 
-### 1. 罗马音查询（单词卡效果）
+### 桌面应用（jp-desktop）
+
+- 图形化界面展示假名学习卡片
+- 可设置定时弹窗复习（默认10分钟）
+- 支持开机自启动
+- 自动记忆窗口大小和位置
+- 可选择学习模式：罗马音/中文/混合
+
+### 命令行工具（jp）
+
+#### 1. 罗马音查询（单词卡效果）
 输入罗马音，显示对应的平假名、片假名（使用从真实日文字体生成的 ASCII art 大字效果，占据约15行×50字符）和例词。
 
 ```bash
@@ -54,20 +64,31 @@ jp 我喜欢编程
 
 ## 安装
 
-### 使用 cargo install（推荐）
+本项目包含两个程序：
+- **jp**：命令行工具（CLI）
+- **jp-desktop**：桌面应用（GUI），带定时弹窗复习功能
 
-使用 `cargo install --path .` 安装到本地 Cargo bin 目录：
+### 使用 cargo install（推荐）
 
 ```bash
 # 在项目根目录执行
-cargo install --locked --path .
+
+# 方式1：同时安装 CLI 和桌面应用
+cargo install --path . --bins --features desktop
+
+# 方式2：只安装 CLI
+cargo install --path . --bin jp
+
+# 方式3：只安装桌面应用
+cargo install --path . --bin jp-desktop --features desktop
 
 # 安装完成后可执行文件在：
 # Windows: %USERPROFILE%\.cargo\bin\
 # Linux/macOS: $HOME/.cargo/bin/
 
 # 确保该目录已在 PATH 中，然后直接运行
-jp chi
+jp chi          # 命令行工具
+jp-desktop      # 桌面应用
 ```
 
 ### 从源码编译
@@ -76,11 +97,30 @@ jp chi
 # 克隆或进入项目目录
 cd jp
 
-# 编译 release 版本
+# 编译 CLI 版本
 cargo build --release
 
+# 编译桌面应用
+cargo build --release --bin jp-desktop --features desktop
+
 # 可执行文件位于
-./target/release/jp.exe
+./target/release/jp.exe          # CLI
+./target/release/jp-desktop.exe  # 桌面应用
+```
+
+### 构建 Windows 安装包
+
+桌面应用支持打包成 Windows 安装程序（NSIS）：
+
+```bash
+# 需要先安装 Tauri CLI
+cargo install tauri-cli --version "^2.0.0"
+
+# 构建安装包
+cargo tauri build --features desktop
+
+# 安装包位于（根据 Tauri 版本可能有所不同）：
+# src-tauri/target/release/bundle/nsis/JP Desktop_0.1.0_x64-setup.exe
 ```
 
 ### 添加到 PATH（可选）
@@ -140,6 +180,18 @@ export OPENAI_MODEL=gpt-3.5-turbo
 
 ## 使用示例
 
+### 桌面应用
+
+```bash
+# 直接启动桌面应用
+jp-desktop
+
+# 或者从源码运行
+cargo run --release --bin jp-desktop --features desktop
+```
+
+### 命令行工具
+
 ```bash
 # 查询罗马音
 jp ka
@@ -161,8 +213,14 @@ jp 我正在学习日语
 ```
 jp/
 ├── Cargo.toml              # 项目配置和依赖
+├── tauri.conf.json        # Tauri 桌面应用配置
 ├── src/
-│   └── main.rs            # 主程序源码
+│   ├── main.rs            # CLI 主程序
+│   └── desktop.rs         # 桌面应用主程序
+├── desktop-ui/            # 桌面应用前端页面
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
 ├── scripts/               # 开发工具脚本
 │   ├── generate_ascii_art.py      # 生成假名ASCII art
 │   ├── update_main_rs.py          # 自动更新main.rs
@@ -170,7 +228,8 @@ jp/
 │   └── katakana_ascii_art.txt     # 生成的片假名ASCII art
 ├── target/
 │   └── release/
-│       └── jp.exe         # 编译后的可执行文件
+│       ├── jp.exe         # CLI 编译后的可执行文件
+│       └── jp-desktop.exe # 桌面应用可执行文件
 └── README.md              # 本文件
 ```
 
