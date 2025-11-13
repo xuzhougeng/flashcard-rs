@@ -148,10 +148,64 @@ const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const intervalSelect = document.getElementById('intervalSelect');
 const autostartCheckbox = document.getElementById('autostartCheckbox');
 const cardTypeSelect = document.getElementById('cardTypeSelect');
+const correctBtn = document.getElementById('correctBtn');
+const incorrectBtn = document.getElementById('incorrectBtn');
 
 // Card history for navigation
 let cardHistory = [];
 let currentCardIndex = -1;
+
+// Learning statistics management
+class LearningStats {
+    constructor() {
+        this.stats = this.loadStats();
+    }
+
+    loadStats() {
+        const saved = localStorage.getItem('learningStats');
+        return saved ? JSON.parse(saved) : {};
+    }
+
+    saveStats() {
+        localStorage.setItem('learningStats', JSON.stringify(this.stats));
+    }
+
+    getCardId(card) {
+        if (card.type === 'romaji') {
+            return `romaji_${card.data.romaji}`;
+        } else {
+            return `chinese_${card.data.chinese}`;
+        }
+    }
+
+    getStats(card) {
+        const cardId = this.getCardId(card);
+        if (!this.stats[cardId]) {
+            this.stats[cardId] = { correct: 0, incorrect: 0 };
+        }
+        return this.stats[cardId];
+    }
+
+    recordCorrect(card) {
+        const cardId = this.getCardId(card);
+        if (!this.stats[cardId]) {
+            this.stats[cardId] = { correct: 0, incorrect: 0 };
+        }
+        this.stats[cardId].correct++;
+        this.saveStats();
+    }
+
+    recordIncorrect(card) {
+        const cardId = this.getCardId(card);
+        if (!this.stats[cardId]) {
+            this.stats[cardId] = { correct: 0, incorrect: 0 };
+        }
+        this.stats[cardId].incorrect++;
+        this.saveStats();
+    }
+}
+
+const learningStats = new LearningStats();
 
 // Load settings on startup
 async function loadSettings() {
@@ -259,6 +313,9 @@ function showForwardCard() {
 }
 
 function displayRomajiCard(data) {
+    const card = { type: 'romaji', data: data };
+    const stats = learningStats.getStats(card);
+    
     cardContainer.innerHTML = `
         <div class="card-flip-container" onclick="flipCard()">
             <div class="flashcard">
@@ -271,8 +328,18 @@ function displayRomajiCard(data) {
                     <div class="question-display">
                         <div class="question-label">罗马字 Romaji</div>
                         <div class="question-text">${data.romaji.toUpperCase()}</div>
+                        <div class="stats-display">
+                            <div class="stat-item">
+                                <span>✅ 正确:</span>
+                                <span class="stat-correct">${stats.correct}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>❌ 错误:</span>
+                                <span class="stat-incorrect">${stats.incorrect}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | ←→:切换历史</div>
+                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | 1:答错 | 2:答对 | ←→:切换历史</div>
                 </div>
 
                 <!-- Back side: Answer (Hiragana, Katakana, Examples) -->
@@ -311,6 +378,9 @@ function displayRomajiCard(data) {
 }
 
 function displayChineseCard(data) {
+    const card = { type: 'chinese', data: data };
+    const stats = learningStats.getStats(card);
+    
     cardContainer.innerHTML = `
         <div class="card-flip-container" onclick="flipCard()">
             <div class="translation-card">
@@ -323,8 +393,18 @@ function displayChineseCard(data) {
                     <div class="question-display">
                         <div class="question-label">中文词汇 Chinese</div>
                         <div class="question-text">${data.chinese}</div>
+                        <div class="stats-display">
+                            <div class="stat-item">
+                                <span>✅ 正确:</span>
+                                <span class="stat-correct">${stats.correct}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>❌ 错误:</span>
+                                <span class="stat-incorrect">${stats.incorrect}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | ←→:切换历史</div>
+                    <div class="flip-hint">💡 空格:翻转 | Enter:下一个 | 1:答错 | 2:答对 | ←→:切换历史</div>
                 </div>
 
                 <!-- Back side: Answer (Japanese, Reading) -->
@@ -383,6 +463,28 @@ document.addEventListener('keydown', (e) => {
             showNextCard();
             break;
 
+        case 'Digit1':
+        case 'Numpad1':
+            // 1: Record as incorrect and show next card
+            e.preventDefault();
+            if (currentCardIndex >= 0 && currentCardIndex < cardHistory.length) {
+                const currentCard = cardHistory[currentCardIndex];
+                learningStats.recordIncorrect(currentCard);
+                showNextCard();
+            }
+            break;
+
+        case 'Digit2':
+        case 'Numpad2':
+            // 2: Record as correct and show next card
+            e.preventDefault();
+            if (currentCardIndex >= 0 && currentCardIndex < cardHistory.length) {
+                const currentCard = cardHistory[currentCardIndex];
+                learningStats.recordCorrect(currentCard);
+                showNextCard();
+            }
+            break;
+
         case 'ArrowLeft':
         case 'ArrowUp':
             // Left/Up Arrow: Show previous card from history
@@ -412,6 +514,25 @@ closeModalBtn.addEventListener('click', () => {
 });
 
 saveSettingsBtn.addEventListener('click', saveSettings);
+
+// Feedback buttons event listeners
+correctBtn.addEventListener('click', () => {
+    if (currentCardIndex >= 0 && currentCardIndex < cardHistory.length) {
+        const currentCard = cardHistory[currentCardIndex];
+        learningStats.recordCorrect(currentCard);
+        // Show next card
+        showNextCard();
+    }
+});
+
+incorrectBtn.addEventListener('click', () => {
+    if (currentCardIndex >= 0 && currentCardIndex < cardHistory.length) {
+        const currentCard = cardHistory[currentCardIndex];
+        learningStats.recordIncorrect(currentCard);
+        // Show next card
+        showNextCard();
+    }
+});
 
 // Close modal when clicking outside
 settingsModal.addEventListener('click', (e) => {
