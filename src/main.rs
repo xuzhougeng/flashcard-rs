@@ -1,15 +1,41 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use unicode_width::UnicodeWidthStr;
+use axum::Router;
+use tower_http::services::ServeDir;
+use std::net::SocketAddr;
 
 #[derive(Parser)]
 #[command(name = "jp")]
 #[command(about = "A CLI tool for learning Japanese", long_about = None)]
 struct Cli {
-    /// Input text (romaji or Chinese)
-    text: String,
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    /// Input text (romaji or Chinese), used when no subcommand is provided
+    #[arg(value_name = "TEXT")]
+    text: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start a web server to host the web application
+    Serve {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+        
+        /// Host address to bind to
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+    },
+    /// Lookup romaji or translate Chinese (default command)
+    Lookup {
+        /// Input text (romaji or Chinese)
+        text: String,
+    },
 }
 
 struct JapaneseChar {
@@ -2092,9 +2118,52 @@ fn init_chinese_map() -> HashMap<String, String> {
     map
 }
 
-#[tokio::main]
-async fn main() {
-    let cli = Cli::parse();
+// Web server function
+async fn start_web_server(host: String, port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    // Get the executable directory
+    let exe_path = std::env::current_exe()?;
+    let exe_dir = exe_path.parent()
+        .ok_or("Failed to get executable directory")?;
+    
+    // Try multiple possible locations for the web directory
+    let mut possible_paths = vec![
+        exe_dir.join("web"),                          // Same directory as exe
+    ];
+    
+    // Add project root path if available
+    if let Some(parent) = exe_dir.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
+        possible_paths.push(parent.join("web"));
+    }
+    
+    // Add current working directory
+    if let Ok(cwd) = std::env::current_dir() {
+        possible_paths.push(cwd.join("web"));
+    }
+    
+    let web_dir = possible_paths.into_iter()
+        .find(|p| p.exists())
+        .ok_or("Web directory not found. Please run from the project root or ensure 'web/' directory exists.")?;
+    
+    println!("📂 Serving files from: {}", web_dir.display());
+    
+    // Build the router
+    let app = Router::new()
+        .nest_service("/", ServeDir::new(&web_dir));
+    
+    let addr = format!("{}:{}", host, port).parse::<SocketAddr>()?;
+    
+    println!("🚀 Web server started!");
+    println!("🌐 Open your browser and visit: http://{}:{}", host, port);
+    println!("📝 Press Ctrl+C to stop the server\n");
+    
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    
+    Ok(())
+}
+
+// Handle the lookup functionality (original main logic)
+async fn handle_lookup(text: String) {
     let romaji_map = init_romaji_map();
     let chinese_map = init_chinese_map();
 
@@ -2119,7 +2188,7 @@ async fn main() {
         println!("║{}║", center_text(text, INNER_WIDTH));
     }
 
-    let input = cli.text.to_lowercase();
+    let input = text.to_lowercase();
 
     // 首先尝试作为罗马音查询
     if let Some(jp_char) = romaji_map.get(&input) {
@@ -2154,16 +2223,16 @@ async fn main() {
         println!("╚═════════════════════════════════════════════════════════════════════════════════════╝\n");
     }
     // 否则尝试作为中文查询
-    else if let Some(japanese) = chinese_map.get(&cli.text) {
+    else if let Some(japanese) = chinese_map.get(&text) {
         println!("╔═══════════════════════════════════════════════");
-        println!("║ Chinese (中文): {}", cli.text);
+        println!("║ Chinese (中文): {}", text);
         println!("║ Japanese (日文): {}", japanese);
         println!("╚═══════════════════════════════════════════════");
     }
     // 如果本地字典中找不到，尝试使用 LLM 翻译
     else {
         // 检查是否包含中文字符
-        let has_chinese = cli.text.chars().any(|c| {
+        let has_chinese = text.chars().any(|c| {
             ('\u{4E00}'..='\u{9FFF}').contains(&c) || // CJK统一汉字
             ('\u{3400}'..='\u{4DBF}').contains(&c)    // CJK扩展A
         });
@@ -2173,9 +2242,9 @@ async fn main() {
             println!("║ 🔍 本地字典未找到，正在使用 LLM 翻译...");
             println!("╠═══════════════════════════════════════════════");
 
-            match translate_with_llm(&cli.text).await {
+            match translate_with_llm(&text).await {
                 Ok(translation) => {
-                    println!("║ Chinese (中文): {}", cli.text);
+                    println!("║ Chinese (中文): {}", text);
                     println!("║ Japanese (日文): {}", translation);
                     println!("║");
                     println!("║ 💡 提示：这是由 AI 生成的翻译");
@@ -2192,10 +2261,40 @@ async fn main() {
                 }
             }
         } else {
-            println!("❌ Sorry, '{}' not found in the database.", cli.text);
+            println!("❌ Sorry, '{}' not found in the database.", text);
             println!("💡 Try:");
             println!("   - Romaji like: a, ka, chi, tsu, etc.");
             println!("   - Chinese words like: 你好, 谢谢, 爱, 水, etc.");
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let cli = Cli::parse();
+
+    match (cli.command, cli.text) {
+        (Some(Commands::Serve { port, host }), _) => {
+            if let Err(e) = start_web_server(host, port).await {
+                eprintln!("❌ Error starting web server: {}", e);
+                std::process::exit(1);
+            }
+        }
+        (Some(Commands::Lookup { text }), _) => {
+            handle_lookup(text).await;
+        }
+        (None, Some(text)) => {
+            handle_lookup(text).await;
+        }
+        (None, None) => {
+            // Default behavior: show help if no command or text provided
+            eprintln!("❌ No input provided.");
+            eprintln!("\nUsage:");
+            eprintln!("  jp <TEXT>                Lookup romaji or translate Chinese");
+            eprintln!("  jp serve [OPTIONS]       Start web server");
+            eprintln!("  jp lookup <TEXT>         Lookup romaji or translate Chinese");
+            eprintln!("\nRun 'jp --help' for more information.");
+            std::process::exit(1);
         }
     }
 }

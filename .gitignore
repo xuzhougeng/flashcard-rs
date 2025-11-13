@@ -1,0 +1,5 @@
+/target
+/bin
+.claude
+.crates.toml
+.crates2.json

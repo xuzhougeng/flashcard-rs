@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日文学习 Flash Card</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🇯🇵 日文学习 Flash Card</h1>
+            <p class="subtitle">Japanese Learning Flashcards</p>
+        </header>
+
+        <div class="search-section">
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="输入罗马字 (如: chi, tsu) 或中文词汇 (如: 你好, 谢谢)"
+                    autocomplete="off"
+                >
+                <button id="searchBtn" class="btn-primary">查询</button>
+            </div>
+            <div id="suggestions" class="suggestions"></div>
+        </div>
+
+        <div id="resultContainer" class="result-container">
+            <div class="welcome-message">
+                <h2>欢迎使用日文学习工具</h2>
+                <p>请在上方输入框中输入：</p>
+                <ul>
+                    <li>罗马字（romaji）查看假名，例如：chi, tsu, ka, a</li>
+                    <li>中文词汇查看日语翻译，例如：你好, 谢谢, 再见</li>
+                </ul>
+                <div class="quick-links">
+                    <h3>快速查询：</h3>
+                    <div class="btn-group">
+                        <button class="btn-link" data-query="a">あ (a)</button>
+                        <button class="btn-link" data-query="chi">ち (chi)</button>
+                        <button class="btn-link" data-query="tsu">つ (tsu)</button>
+                        <button class="btn-link" data-query="你好">你好</button>
+                        <button class="btn-link" data-query="谢谢">谢谢</button>
+                        <button class="btn-link" data-query="春天">春天</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>基于 Rust CLI 版本改编的网页版日文学习工具</p>
+            <p>支持 46 个基本假名字符和 60+ 常用词汇</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
