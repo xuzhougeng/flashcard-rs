@@ -39,14 +39,14 @@ fn get_settings(state: tauri::State<AppState>) -> Result<Settings, String> {
 }
 
 #[tauri::command]
-async fn save_settings(
+fn save_settings(
     settings: Settings,
     state: tauri::State<'_, AppState>,
     app: AppHandle,
 ) -> Result<(), String> {
     // Update settings in memory
     {
-        let mut app_settings = state.settings.lock().map_err(|e| e.to_string())?;
+        let mut app_settings = state.settings.lock().map_err(|e| format!("Failed to lock settings: {}", e))?;
         *app_settings = settings.clone();
     }
 
@@ -54,12 +54,14 @@ async fn save_settings(
     let store = app.store("settings.json")
         .map_err(|e| format!("Failed to get store: {}", e))?;
 
+    // Set values in store
     store.set("interval", serde_json::json!(settings.interval));
     store.set("autostart", serde_json::json!(settings.autostart));
     store.set("card_type", serde_json::json!(settings.card_type.clone()));
 
+    // Save store to disk
     store.save()
-        .map_err(|e| format!("Failed to save settings: {}", e))?;
+        .map_err(|e| format!("Failed to save store to disk: {}", e))?;
 
     // Handle autostart
     let autostart_manager = app.autolaunch();

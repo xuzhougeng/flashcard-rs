@@ -178,7 +178,8 @@ async function saveSettings() {
         settingsModal.classList.remove('show');
     } catch (error) {
         console.error('Failed to save settings:', error);
-        alert('保存设置失败！');
+        const errorMessage = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+        alert(`保存设置失败！\n错误: ${errorMessage}`);
     }
 }
 
