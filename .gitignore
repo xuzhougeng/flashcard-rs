@@ -4,3 +4,4 @@
 .crates.toml
 .crates2.json
 /web-server
+/gen

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "JP Desktop",
+  "version": "0.1.0",
+  "identifier": "com.jp.desktop",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "desktop-ui"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ],
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": null
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "日文学习 Flash Card",
+        "width": 600,
+        "height": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "visible": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  }
+}
+

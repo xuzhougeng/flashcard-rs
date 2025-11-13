@@ -3,6 +3,15 @@ name = "jp"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "jp"
+path = "src/main.rs"
+
+[[bin]]
+name = "jp-desktop"
+path = "src/desktop.rs"
+required-features = ["desktop"]
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
@@ -13,3 +22,16 @@ unicode-width = "0.1"
 axum = "0.7"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs"] }
+
+# Tauri dependencies (optional, only for desktop app)
+tauri = { version = "2", optional = true, features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = { version = "2", optional = true }
+tauri-plugin-store = { version = "2", optional = true }
+rand = { version = "0.8", optional = true }
+
+[build-dependencies]
+tauri-build = { version = "2", optional = true, features = [] }
+
+[features]
+default = []
+desktop = ["tauri", "tauri-build", "tauri-plugin-autostart", "tauri-plugin-store", "rand"]
