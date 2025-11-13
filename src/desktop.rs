@@ -16,6 +16,7 @@ struct Settings {
     interval: u64,       // in minutes
     autostart: bool,
     card_type: String,   // "romaji", "chinese", or "mixed"
+    close_behavior: Option<String>, // "minimize" or "exit", None means ask every time
 }
 
 impl Default for Settings {
@@ -24,6 +25,7 @@ impl Default for Settings {
             interval: 10,
             autostart: false,
             card_type: "mixed".to_string(),
+            close_behavior: None,
         }
     }
 }
@@ -34,6 +36,31 @@ struct AppState {
     timer_running: Arc<Mutex<bool>>,
     timer_generation: Arc<Mutex<u64>>,
     window_hidden: Arc<Mutex<bool>>, // Track if window is hidden to tray
+}
+
+// Helper function to handle close action
+async fn handle_close_action(behavior: &str, state: &AppState, app: &AppHandle) {
+    match behavior {
+        "minimize" => {
+            // Hide window and mark as hidden
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.hide();
+                if let Ok(mut hidden) = state.window_hidden.lock() {
+                    *hidden = true;
+                }
+            }
+        }
+        "exit" => {
+            // Stop the timer task and exit
+            if let Ok(mut running) = state.timer_running.lock() {
+                *running = false;
+            }
+            std::process::exit(0);
+        }
+        _ => {
+            eprintln!("Unknown close behavior: {}", behavior);
+        }
+    }
 }
 
 #[tauri::command]
@@ -62,6 +89,7 @@ fn save_settings(
     store.set("interval", serde_json::json!(settings.interval));
     store.set("autostart", serde_json::json!(settings.autostart));
     store.set("card_type", serde_json::json!(settings.card_type.clone()));
+    store.set("close_behavior", serde_json::json!(settings.close_behavior.clone()));
 
     // Save store to disk
     store.save()
@@ -216,6 +244,8 @@ fn main() {
                 card_type: store.get("card_type")
                     .and_then(|v| v.as_str().map(|s| s.to_string()))
                     .unwrap_or_else(|| "mixed".to_string()),
+                close_behavior: store.get("close_behavior")
+                    .and_then(|v| v.as_str().map(|s| s.to_string())),
             };
 
             let state = AppState {
@@ -281,40 +311,64 @@ fn main() {
                         // Prevent default close behavior
                         api.prevent_close();
 
-                        // Show dialog asking user what to do
+                        // Check if user has a saved preference
+                        let saved_behavior = {
+                            close_state.settings.lock()
+                                .ok()
+                                .and_then(|settings| settings.close_behavior.clone())
+                        };
+
                         let state_clone = close_state.clone();
                         let app_clone = close_app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
-                            let result = app_clone.dialog()
-                                .message("选择操作")
-                                .title("关闭窗口")
-                                .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("最小化到托盘".to_string(), "完全退出".to_string()))
-                                .kind(MessageDialogKind::Info)
-                                .blocking_show();
+                        if let Some(behavior) = saved_behavior {
+                            // User has saved preference, execute directly
+                            tauri::async_runtime::spawn(async move {
+                                handle_close_action(&behavior, &state_clone, &app_clone).await;
+                            });
+                        } else {
+                            // No saved preference, ask user
+                            tauri::async_runtime::spawn(async move {
+                                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
-                            match result {
-                                true => {
-                                    // User chose "最小化到托盘" (OK button)
-                                    if let Some(window) = app_clone.get_webview_window("main") {
-                                        let _ = window.hide();
-                                        // Mark window as hidden
-                                        if let Ok(mut hidden) = state_clone.window_hidden.lock() {
-                                            *hidden = true;
+                                let result = app_clone.dialog()
+                                    .message("选择操作")
+                                    .title("关闭窗口")
+                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("最小化到托盘".to_string(), "完全退出".to_string()))
+                                    .kind(MessageDialogKind::Info)
+                                    .blocking_show();
+
+                                let chosen_behavior = if result {
+                                    "minimize"
+                                } else {
+                                    "exit"
+                                };
+
+                                // Ask if user wants to remember this choice
+                                let remember = app_clone.dialog()
+                                    .message("记住此选择，不再提醒？")
+                                    .title("记住选择")
+                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancel("记住".to_string(), "不记住".to_string()))
+                                    .kind(MessageDialogKind::Info)
+                                    .blocking_show();
+
+                                if remember {
+                                    // Save the preference
+                                    if let Ok(mut settings) = state_clone.settings.lock() {
+                                        settings.close_behavior = Some(chosen_behavior.to_string());
+
+                                        // Persist to disk
+                                        if let Ok(store) = app_clone.store("settings.json") {
+                                            store.set("close_behavior", serde_json::json!(chosen_behavior));
+                                            let _ = store.save();
                                         }
                                     }
                                 }
-                                false => {
-                                    // User chose "完全退出" (Cancel button)
-                                    // Stop the timer task
-                                    if let Ok(mut running) = state_clone.timer_running.lock() {
-                                        *running = false;
-                                    }
-                                    std::process::exit(0);
-                                }
-                            }
-                        });
+
+                                // Execute the chosen action
+                                handle_close_action(chosen_behavior, &state_clone, &app_clone).await;
+                            });
+                        }
                     }
                 });
             }
