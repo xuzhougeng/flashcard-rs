@@ -194,10 +194,10 @@ header h1 {
 }
 
 /* Flip card container for 3D effect */
-.card-flip-container {
+ .card-flip-container {
     width: 100%;
     max-width: 500px;
-    height: 450px;
+    height: 540px;
     perspective: 1000px;
     cursor: pointer;
     position: relative;
@@ -306,14 +306,14 @@ header h1 {
 }
 
 .flashcard-body {
-    padding: 25px;
+    padding: 20px;
     flex: 1;
     overflow-y: auto;
 }
 
 .kana-section {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .romaji-display {
@@ -326,7 +326,7 @@ header h1 {
 .kana-display {
     display: flex;
     justify-content: space-around;
-    margin-bottom: 25px;
+    margin-bottom: 15px;
 }
 
 .kana-char {
@@ -350,22 +350,22 @@ header h1 {
 }
 
 .examples {
-    margin-top: 20px;
-    padding: 15px;
+    margin-top: 10px;
+    padding: 12px;
     background: #f8f9fa;
     border-radius: 10px;
 }
 
 .examples h3 {
     color: #495057;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     border-bottom: 2px solid #dee2e6;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
     font-size: 1rem;
 }
 
 .example-item {
-    padding: 10px 0;
+    padding: 6px 0;
     font-size: 0.95rem;
     border-bottom: 1px solid #e9ecef;
 }
