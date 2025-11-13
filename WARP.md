@@ -29,11 +29,6 @@ cargo run -- 你好          # Translate Chinese
 # Optional explicit subcommand form also works
 cargo run -- lookup <TEXT>
 .\\target\\release\\jp.exe lookup <TEXT>
-
-# Start the Windows reminder tool (every 30 minutes popup)
-.\\target\\release\\jp-notifier.exe
-# Or customize the interval in minutes
-.\\target\\release\\jp-notifier.exe --interval-minutes 20
 ```
 
 ### Testing
