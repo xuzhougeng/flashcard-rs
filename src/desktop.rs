@@ -102,8 +102,13 @@ fn save_settings(
             eprintln!("Warning: Failed to enable autostart: {}", e);
         }
     } else {
-        if let Err(e) = autostart_manager.disable() {
-            eprintln!("Warning: Failed to disable autostart: {}", e);
+        // Only try to disable if it's actually enabled
+        if let Ok(is_enabled) = autostart_manager.is_enabled() {
+            if is_enabled {
+                if let Err(e) = autostart_manager.disable() {
+                    eprintln!("Warning: Failed to disable autostart: {}", e);
+                }
+            }
         }
     }
 
