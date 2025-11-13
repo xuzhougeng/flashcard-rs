@@ -293,7 +293,7 @@ fn main() {
                                 let confirm = app_clone.dialog()
                                     .message("确定要完全退出应用吗？")
                                     .title("确认退出")
-                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancel("确定".to_string(), "取消".to_string()))
+                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("确定".to_string(), "取消".to_string()))
                                     .kind(MessageDialogKind::Warning)
                                     .blocking_show();
 
@@ -369,7 +369,7 @@ fn main() {
                                 let remember = app_clone.dialog()
                                     .message("记住此选择，不再提醒？")
                                     .title("记住选择")
-                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancel("记住".to_string(), "不记住".to_string()))
+                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("记住".to_string(), "不记住".to_string()))
                                     .kind(MessageDialogKind::Info)
                                     .blocking_show();
 
