@@ -127,10 +127,10 @@ desktop = [
 1. **Settings Management**
    ```rust
    struct Settings {
-       interval: u64,              // Minutes between review notifications
+       interval: u64,              // Seconds between review notifications
        autostart: bool,            // System startup behavior
        card_type: String,          // "romaji", "chinese", or "mixed"
-       close_behavior: Option<String>, // "minimize", "exit", or None (ask)
+       close_behavior: Option<String>, // "minimize" or "exit" (always set, default "minimize")
    }
    ```
 
@@ -157,15 +157,19 @@ desktop = [
 
 4. **Window Management**
    - Auto-saves window size/position with `tauri-plugin-window-state`
-   - System tray with "Show"/"Quit" menu
-   - Configurable close behavior (minimize to tray vs exit)
-   - Confirmation dialog on quit
+   - System tray with "显示窗口"/"完全退出" menu
+   - Configurable close behavior (minimize to tray vs exit, default: minimize)
+   - Left-click tray icon: show window and restart timer
+   - Right-click tray icon: show menu
+   - Confirmation dialog on quit from tray menu
 
 5. **Timer System**
    - Spawns async task on app startup
-   - Checks `timer_running` flag and `interval` setting
-   - Shows notification and window at configured intervals
+   - Checks `timer_running` flag and `interval` setting (in seconds)
+   - Shows notification when window hidden to tray
+   - Restarts timer when window is shown from tray (ensures fresh countdown)
    - Generation counter prevents orphaned tasks
+   - Minimum interval: 10 seconds (for testing)
 
 ### Frontend (`desktop-ui/`)
 
@@ -186,10 +190,10 @@ desktop = [
    - Records results for statistics
 
 3. **Settings Modal**
-   - Interval adjustment (5-60 minutes)
+   - Interval adjustment (10s-60min, with test intervals: 10s, 30s, 1min)
    - Autostart toggle
    - Card type selection
-   - Close behavior preference
+   - Close behavior preference (minimize to tray or exit, no "ask every time" option)
 
 4. **Dictionary Data**
    - Duplicated from `src/main.rs` (keep in sync!)
@@ -475,6 +479,30 @@ cargo clippy --all-targets --all-features
 - Autostart uses .desktop file
 - May need additional system tray dependencies
 
+### 7. Recent Important Changes
+
+**Timer Behavior (Latest):**
+- Timer now restarts when window is shown from tray
+- This ensures users get a fresh countdown after viewing the window
+- Fixes issue where timer would trigger too soon after user just studied
+
+**Interval Settings (Latest):**
+- Changed from minutes to seconds for better flexibility
+- Added test intervals: 10s, 30s, 1min
+- Minimum interval is now 10 seconds (down from 5 minutes)
+- Default remains 10 minutes (600 seconds)
+
+**Close Behavior (Latest):**
+- Default behavior changed to "minimize to tray"
+- Removed "ask every time" option from settings
+- Close action is now immediate based on settings (no confirmation)
+- Users can still choose "exit" in settings if preferred
+
+**Tray Icon Behavior (Latest):**
+- Left-click: show window and restart timer
+- Right-click: show menu with "显示窗口" and "完全退出" options
+- Quit from menu still shows confirmation dialog
+
 ## Environment Setup
 
 ### Development Requirements
@@ -606,15 +634,18 @@ export OPENAI_MODEL="gpt-3.5-turbo"                  # Optional
 
 ### Important Constants
 - ASCII art size: 15 lines × 50 chars
-- Default interval: 10 minutes
+- Default interval: 600 seconds (10 minutes)
+- Minimum interval: 10 seconds (for testing)
+- Interval unit: seconds
 - Default window: 800×900 pixels
 - Min window: 700×800 pixels
 - Default card type: "mixed"
+- Default close behavior: "minimize" (to tray)
 - LLM temperature: 0.3
 
 ---
 
-**Last Updated:** 2025-01-14 (based on commit da17091)
+**Last Updated:** 2025-01-14 (based on recent commits)
 
 **Maintainer Notes:**
 - Keep dictionaries in sync between Rust and JavaScript

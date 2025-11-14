@@ -25,7 +25,7 @@ impl Default for Settings {
             interval: 600,  // 10 minutes in seconds
             autostart: false,
             card_type: "mixed".to_string(),
-            close_behavior: None,
+            close_behavior: Some("minimize".to_string()),  // Default to minimize to tray
         }
     }
 }
@@ -249,8 +249,11 @@ fn main() {
                 card_type: store.get("card_type")
                     .and_then(|v| v.as_str().map(|s| s.to_string()))
                     .unwrap_or_else(|| "mixed".to_string()),
-                close_behavior: store.get("close_behavior")
-                    .and_then(|v| v.as_str().map(|s| s.to_string())),
+                close_behavior: Some(
+                    store.get("close_behavior")
+                        .and_then(|v| v.as_str().map(|s| s.to_string()))
+                        .unwrap_or_else(|| "minimize".to_string())
+                ),  // Default to minimize to tray
             };
 
             let state = AppState {
@@ -352,64 +355,21 @@ fn main() {
                         // Prevent default close behavior
                         api.prevent_close();
 
-                        // Check if user has a saved preference
-                        let saved_behavior = {
+                        // Get close behavior from settings (always Some() with default "minimize")
+                        let behavior = {
                             close_state.settings.lock()
                                 .ok()
                                 .and_then(|settings| settings.close_behavior.clone())
+                                .unwrap_or_else(|| "minimize".to_string())
                         };
 
                         let state_clone = close_state.clone();
                         let app_clone = close_app_handle.clone();
 
-                        if let Some(behavior) = saved_behavior {
-                            // User has saved preference, execute directly
-                            tauri::async_runtime::spawn(async move {
-                                handle_close_action(&behavior, &state_clone, &app_clone).await;
-                            });
-                        } else {
-                            // No saved preference, ask user
-                            tauri::async_runtime::spawn(async move {
-                                use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-
-                                let result = app_clone.dialog()
-                                    .message("选择操作")
-                                    .title("关闭窗口")
-                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("最小化到托盘".to_string(), "完全退出".to_string()))
-                                    .kind(MessageDialogKind::Info)
-                                    .blocking_show();
-
-                                let chosen_behavior = if result {
-                                    "minimize"
-                                } else {
-                                    "exit"
-                                };
-
-                                // Ask if user wants to remember this choice
-                                let remember = app_clone.dialog()
-                                    .message("记住此选择，不再提醒？")
-                                    .title("记住选择")
-                                    .buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancelCustom("记住".to_string(), "不记住".to_string()))
-                                    .kind(MessageDialogKind::Info)
-                                    .blocking_show();
-
-                                if remember {
-                                    // Save the preference
-                                    if let Ok(mut settings) = state_clone.settings.lock() {
-                                        settings.close_behavior = Some(chosen_behavior.to_string());
-
-                                        // Persist to disk
-                                        if let Ok(store) = app_clone.store("settings.json") {
-                                            store.set("close_behavior", serde_json::json!(chosen_behavior));
-                                            let _ = store.save();
-                                        }
-                                    }
-                                }
-
-                                // Execute the chosen action
-                                handle_close_action(chosen_behavior, &state_clone, &app_clone).await;
-                            });
-                        }
+                        // Execute close action directly based on settings
+                        tauri::async_runtime::spawn(async move {
+                            handle_close_action(&behavior, &state_clone, &app_clone).await;
+                        });
                     }
                 });
             }
