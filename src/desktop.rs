@@ -320,17 +320,22 @@ fn main() {
                     }
                 })
                 .on_tray_icon_event(move |_tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        // On tray icon click, show window and restart timer
-                        if let Some(window) = tray_click_app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            // Mark window as visible and restart timer
-                            if let Ok(mut hidden) = tray_click_state.window_hidden.lock() {
-                                *hidden = false;
+                    // Only handle left-click to show window
+                    // Right-click will show the menu automatically
+                    if let TrayIconEvent::Click { button, .. } = event {
+                        if button == tauri::tray::MouseButton::Left {
+                            // Left-click: show window and restart timer
+                            if let Some(window) = tray_click_app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                // Mark window as visible and restart timer
+                                if let Ok(mut hidden) = tray_click_state.window_hidden.lock() {
+                                    *hidden = false;
+                                }
+                                restart_timer(&tray_click_app, &tray_click_state);
                             }
-                            restart_timer(&tray_click_app, &tray_click_state);
                         }
+                        // Right-click shows menu automatically, no action needed
                     }
                 })
                 .build(app)?;
