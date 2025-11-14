@@ -13,7 +13,7 @@ use tauri_plugin_notification::NotificationExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Settings {
-    interval: u64,       // in minutes
+    interval: u64,       // in seconds
     autostart: bool,
     card_type: String,   // "romaji", "chinese", or "mixed"
     close_behavior: Option<String>, // "minimize" or "exit", None means ask every time
@@ -22,7 +22,7 @@ struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            interval: 10,
+            interval: 600,  // 10 minutes in seconds
             autostart: false,
             card_type: "mixed".to_string(),
             close_behavior: None,
@@ -178,8 +178,8 @@ fn restart_timer(app: &AppHandle, state: &AppState) {
                 }
             };
 
-            // Wait for interval
-            tokio::time::sleep(Duration::from_secs(interval * 60)).await;
+            // Wait for interval (interval is now in seconds)
+            tokio::time::sleep(Duration::from_secs(interval)).await;
 
             // Verify again before showing window
             let is_still_current = {
@@ -242,7 +242,7 @@ fn main() {
             let settings = Settings {
                 interval: store.get("interval")
                     .and_then(|v| v.as_u64())
-                    .unwrap_or(10),
+                    .unwrap_or(600),  // Default 10 minutes in seconds
                 autostart: store.get("autostart")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false),
@@ -270,9 +270,12 @@ fn main() {
                 .item(&quit_item)
                 .build()?;
 
-            let tray_state = state.clone();
-            let tray_app_handle = app_handle.clone();
+            let tray_menu_state = state.clone();
+            let tray_menu_show_state = state.clone();
+            let tray_menu_show_app = app_handle.clone();
             let tray_quit_state = state.clone();
+            let tray_click_state = state.clone();
+            let tray_click_app = app_handle.clone();
             TrayIconBuilder::new()
                 .menu(&menu)
                 .icon(app.default_window_icon().unwrap().clone())
@@ -283,9 +286,11 @@ fn main() {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                                 // Mark window as visible
-                                if let Ok(mut hidden) = tray_state.window_hidden.lock() {
+                                if let Ok(mut hidden) = tray_menu_state.window_hidden.lock() {
                                     *hidden = false;
                                 }
+                                // Restart timer when window is shown
+                                restart_timer(&tray_menu_show_app, &tray_menu_show_state);
                             }
                         }
                         "quit" => {
@@ -316,10 +321,15 @@ fn main() {
                 })
                 .on_tray_icon_event(move |_tray, event| {
                     if let TrayIconEvent::Click { .. } = event {
-                        // On tray icon click, show window
-                        if let Some(window) = tray_app_handle.get_webview_window("main") {
+                        // On tray icon click, show window and restart timer
+                        if let Some(window) = tray_click_app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                            // Mark window as visible and restart timer
+                            if let Ok(mut hidden) = tray_click_state.window_hidden.lock() {
+                                *hidden = false;
+                            }
+                            restart_timer(&tray_click_app, &tray_click_state);
                         }
                     }
                 })
