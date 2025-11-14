@@ -98,7 +98,7 @@ jp-desktop      # 桌面应用
 cd jp
 
 # 编译 CLI 版本
-cargo build --release
+cargo build --release --bin jp
 
 # 编译桌面应用
 cargo build --release --bin jp-desktop --features desktop
@@ -106,6 +106,19 @@ cargo build --release --bin jp-desktop --features desktop
 # 可执行文件位于
 ./target/release/jp.exe          # CLI
 ./target/release/jp-desktop.exe  # 桌面应用
+```
+
+### 从源码运行（开发模式）
+
+```bash
+# 运行 CLI 版本
+cargo run --bin jp -- <参数>
+# 例如：
+cargo run --bin jp -- chi
+cargo run --bin jp -- 你好
+
+# 运行桌面应用
+cargo run --bin jp-desktop --features desktop
 ```
 
 ### 构建 Windows 安装包
@@ -206,6 +219,10 @@ jp 春天
 # 查询复杂句子（需要配置 LLM）
 jp 今天天气真好
 jp 我正在学习日语
+
+# 或者从源码运行
+cargo run --bin jp -- chi
+cargo run --bin jp -- 你好
 ```
 
 ## 项目结构
